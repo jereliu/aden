@@ -1,0 +1,188 @@
+\documentclass[11pt]{article}
+
+\usepackage{natbib}
+\bibliographystyle{unsrtnat}
+
+% change document font family to Palatino, and code font to Courier
+\usepackage{mathpazo} % add possibly `sc` and `osf` options
+%\usepackage{eulervm}
+%\usepackage{courier}
+%allow formula formatting
+
+% flow chart
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\usetikzlibrary{bayesnet}
+
+%identation in nested enumerates
+\usepackage[shortlabels]{enumitem}
+\setlist[enumerate,1]{leftmargin=1cm} % level 1 list
+\setlist[enumerate,2]{leftmargin=2cm} % level 2 list
+
+%flush align equations to left, this also loads amsmath 
+%\usepackage[fleqn]{mathtools}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\DeclareMathAlphabet\mathbfcal{OMS}{cmsy}{b}{n}
+\usepackage{comment}
+
+% allow algorithm 
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\newcommand\mycommfont[1]{\ttfamily\textcolor{blue}{#1}}
+\SetCommentSty{mycommfont}
+
+%allow equation numbering in {align*} envir
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+
+%declare math symbolz
+%# inner product
+\DeclarePairedDelimiter{\inner}{\langle}{\rangle}
+
+%declare argmin
+\newcommand{\argmin}{\operatornamewithlimits{argmin}}
+
+%declare checkmark
+\usepackage{amssymb}
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+%title positon
+\usepackage{titling} %fix title
+\setlength{\droptitle}{-6em}   % Move up the title 
+
+%change section title font size
+\usepackage{titlesec} 
+\titleformat{\section}
+  {\normalfont\fontsize{12}{15}}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\fontsize{12}{13}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\fontsize{12}{13}}{\thesubsubsection}{1em}{}
+
+%overwrite bfseries to allow formula in section title  
+\def\bfseries{\fontseries \bfdefault \selectfont \boldmath}
+
+% change page margin
+\usepackage[margin=0.8 in]{geometry} 
+
+%disable indentation
+\setlength\parindent{0pt}
+
+%allow inserting multiple graphs
+\usepackage{graphicx}
+\usepackage[skip=1pt]{subcaption}
+\usepackage[justification=centering,font=small]{caption}
+\newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}%indep sign
+
+%allow code chunks
+\usepackage{listings}
+%\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\lstset{frame=lrbt,xleftmargin=\fboxsep, xrightmargin=-\fboxsep}
+\lstset{language=R, commentstyle=\bfseries, 
+keywordstyle=\ttfamily} %R-related formatting
+\lstset{escapeinside={<@}{@>}}
+
+%allow merged cell in tables
+\usepackage{multirow}
+
+%allow http links
+\usepackage{hyperref}
+
+%allow different font colors
+\usepackage{xcolor}
+
+%Thm and Def environment
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+
+\newenvironment{definition2}[1][Definition]{\begin{trivlist} %def without index
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+\newenvironment{example}[1][Example]{\begin{trivlist} %def without index
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+%allow strikeout effect
+\usepackage[normalem]{ulem}
+
+%macros from Bob Gray
+\usepackage{"./macro/GrandMacros"}
+\usepackage{"./macro/Macro_BIO235"}
+
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% TItle page with contents %%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Progress Report \\ Model Setup \\ \today \vspace{-1ex}}
+
+\pretitle{\begin{flushright}\normalsize}
+\posttitle{\par\end{flushright}}
+\author{}
+\date{}
+\vspace{-10em}
+\maketitle
+\vspace{-5em}
+
+%\tableofcontents 
+%\vspace{10em}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% Formal Sections %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{\textbf{Simulated Data}}
+First generate data from a spatial gaussian process with 100 locations, we sample spatial locations $(x, y)$ iid from standard normal, and assume the pollutant $z$ follow below Gaussian Process:
+\begin{align*}
+z(x, y) &\stackrel{iid}{\sim} N(f(x, y), \sigma^2 = 0.1) \\
+f(x, y) &= 0.2 x + 0.5 y + \sqrt{x^2 + y^2} + sin(x) + cos(x)
+\end{align*}
+
+\begin{figure}[!ht]
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{"./plot/loc_site"}
+  \caption{Sampled saptial location for monitoring sites (standardized)}
+  \label{fig:sfig1}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{"./plot/y_surface"}
+  \caption{Average pollutant surface over space (standardized)}
+  \label{fig:sfig2}
+\end{subfigure}
+%\caption{plots of....}
+\label{fig:fig}
+\end{figure}
+
+We then generate prediction for $z(x, y)$ from 5 base GP models, with covariance structure:
+\begin{enumerate}
+\item Linear, 
+\item Polynomial, degree 3
+\item Gaussian RBF, with ARD
+\item Mat\'{e}rn $\frac{5}{2}$, with ARD
+\item MLP, with ARD.\\ 
+Equivalent to a 2-layer network with Gaussian CDF activation function and infinite hidden units:
+$$k(x,y) = \sigma^{2}\frac{2}{\pi }  \text{asin} \left ( \frac{ \sigma_w^2 x^\top y+\sigma_b^2}{\sqrt{\sigma_w^2x^\top x + \sigma_b^2 + 1}\sqrt{\sigma_w^2 y^\top y + \sigma_b^2 +1}} \right )$$
+\end{enumerate} 
+The out-of-sample MSE for 5 models are $4.846$, $2.094$, $2.011$, $1.989$, $1.981$ respectively.
+
+
+
+\clearpage
+\bibliography{../report}
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
