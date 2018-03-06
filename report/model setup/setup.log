@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.3.5)  6 MAR 2018 13:24
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.3.5)  6 MAR 2018 16:00
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**report_2_4.tex
-(./report_2_4.tex
+**setup.tex
+(./setup.tex
 LaTeX2e <2016/02/01>
 Babel <3.9q> and hyphenation patterns for 5 language(s) loaded.
 (/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
@@ -859,8 +859,9 @@ Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
 Package: ulem 2012/05/18
 \ULdepth=\dimen264
 )
-(./macro/GrandMacros.sty) (./macro/Macro_BIO235.sty) (./report_2_4.aux)
-\openout1 = `report_2_4.aux'.
+(./macro/GrandMacros.sty) (./macro/Macro_BIO235.sty)
+No file setup.aux.
+\openout1 = `setup.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 117.
 LaTeX Font Info:    ... okay on input line 117.
@@ -877,7 +878,6 @@ LaTeX Font Info:    ... okay on input line 117.
 LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 117.
 LaTeX Font Info:    ... okay on input line 117.
 LaTeX Font Info:    Try loading font information for OT1+ppl on input line 117.
-
 
 (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ot1ppl.fd
 File: ot1ppl.fd 2001/06/04 font definitions for OT1/ppl.
@@ -963,10 +963,8 @@ Package: gettitlestring 2010/12/03 v1.4 Cleanup title references (HO)
 LaTeX Info: Redefining \ref on input line 117.
 LaTeX Info: Redefining \pageref on input line 117.
 LaTeX Info: Redefining \nameref on input line 117.
-
-(./report_2_4.out) (./report_2_4.out)
 \@outlinefile=\write5
-\openout5 = `report_2_4.out'.
+\openout5 = `setup.out'.
 
 LaTeX Font Info:    Try loading font information for OML+zplm on input line 130
 .
@@ -1019,14 +1017,14 @@ LaTeX Font Info:    Font shape `U/msb/m/n' will be
 LaTeX Font Info:    Font shape `U/msb/m/n' will be
 (Font)              scaled to size 6.25204pt on input line 139.
 
-<"./plot/loc_site".png, id=11, 419.166pt x 364.9635pt>
+<"./plot/loc_site".png, id=7, 419.166pt x 364.9635pt>
 File: "./plot/loc_site".png Graphic file (type png)
 
 <use "./plot/loc_site".png>
 Package pdftex.def Info: "./plot/loc_site".png used on input line 148.
 (pdftex.def)             Requested size: 199.46577pt x 173.67131pt.
 
-<"./plot/y_surface".png, id=13, 462.528pt x 346.896pt>
+<"./plot/y_surface".png, id=9, 462.528pt x 346.896pt>
 File: "./plot/y_surface".png Graphic file (type png)
 
 <use "./plot/y_surface".png>
@@ -1040,36 +1038,48 @@ Underfull \hbox (badness 10000) in paragraph at lines 146--160
 [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map} <./plot/loc_site.png> <./pl
-ot/y_surface.png>]
-No file report_2_4.bbl.
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 179.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 179.
-(./report_2_4.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 179.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 179.
-Package rerunfilecheck Info: File `report_2_4.out' has not changed.
-(rerunfilecheck)             Checksum: 5C9B29AF5BD5E293892FC5D5595231E9;49.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 179.
+ot/y_surface.png>] [2]
+No file setup.bbl.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 211.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 211.
+(./setup.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 211.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 211.
+
+
+Package rerunfilecheck Warning: File `setup.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `setup.out':
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  90E31557FEE48F5FF08924561A68C0EC;132.
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 211.
  ) 
 Here is how much of TeX's memory you used:
- 25289 strings out of 494910
- 464733 string characters out of 6179837
- 582070 words of memory out of 5000000
- 28115 multiletter control sequences out of 15000+600000
- 26744 words of font info for 81 fonts, out of 8000000 for 9000
+ 25326 strings out of 494910
+ 465052 string characters out of 6179837
+ 583542 words of memory out of 5000000
+ 28132 multiletter control sequences out of 15000+600000
+ 37678 words of font info for 108 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
- 55i,9n,78p,432b,484s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 55i,13n,78p,427b,484s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/share/texliv
 e/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texm
 f-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/
 fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/
-type1/public/mathpazo/fplmri.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw
-/palatino/uplb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/palatino/up
-lr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/palatino/uplri8a.pfb>
-Output written on report_2_4.pdf (1 page, 168409 bytes).
+type1/public/mathpazo/fplmbi.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/mathpazo/fplmr.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/mathpa
+zo/fplmri.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/palatino/uplb8a.pf
+b></usr/share/texlive/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb></usr/shar
+e/texlive/texmf-dist/fonts/type1/urw/palatino/uplri8a.pfb>
+Output written on setup.pdf (2 pages, 185452 bytes).
 PDF statistics:
- 63 PDF objects out of 1000 (max. 8388607)
- 48 compressed objects within 1 object stream
- 9 named destinations out of 1000 (max. 500000)
- 31 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 84 PDF objects out of 1000 (max. 8388607)
+ 66 compressed objects within 1 object stream
+ 21 named destinations out of 1000 (max. 500000)
+ 23 words of extra memory for PDF output out of 10000 (max. 10000000)
 

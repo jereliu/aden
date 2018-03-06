@@ -171,6 +171,38 @@ $$k(x,y) = \sigma^{2}\frac{2}{\pi }  \text{asin} \left ( \frac{ \sigma_w^2 x^\to
 \end{enumerate} 
 The out-of-sample MSE for 5 models are $4.846$, $2.094$, $2.011$, $1.989$, $1.981$ respectively.
 
+\section{\textbf{Model}}
+Given data $\{(x_i, y_i), z_i\}_{i=1}^n$ and $b \in \{1, \dots, B\}$ base models, the spatial-temporal ensemble model can be expressed in terms of below probablistic program.
+\begin{align*}
+z &= \sum_{b=1}^B w_b(x, y) * z_b(x, y)\\
+\bw &= softmax(\bw') \qquad \mbox{where } \bw = \{w_b\}_{b=1}^B, \bw' = \{w'_b\}_{b=1}^B \\
+w'_b(x, y) & \sim \Gsc\Psc(0, \quad k_{\btheta}(x, y) + \sigma^2 ), \quad \btheta \sim P() \\
+z_b(x, y) &\sim \Gsc\Psc(\hat{z}_b(x, y), \quad cov(z_b)(x, y))
+\end{align*}
+Notice that the distribution of $z_b's$ are fixed \textit{a priori} (already learned from pre-processing step), and inference is performed for $\bw_b$ along.
+
+This model will be implemented in pymc3 language.
+
+\section{\textbf{Timeline}}
+\begin{enumerate}
+\item (March. Week 3-4) \\
+Initial implementation. 
+\item (March. Week 4 - April. Week 1) \\
+Initial experiment on simulated data.
+Investigating:
+\begin{enumerate}
+\item Sensitivity to model and kernel specification
+\item Whether improved performance for overall ensemble, how it is tighed to the property of the base models. More specifically:
+\begin{enumerate}
+\item Variance among model prediction
+\item Number and bias of models (few strong model with good prediction for different aspect of the data, or large collection of weak models)
+\end{enumerate}
+\item Identifiability of individual weights
+\end{enumerate} 
+\item (April. Week 2-3) \\
+More realistic experiment, gradually increase complexity of data-generation mechanism toward (using the mean-surface from QD or Itai's prediction)
+\item (April. Week 4) Start experiment on real data
+\end{enumerate}
 
 
 \clearpage
