@@ -1,2 +1,2 @@
 # aden
-Adaptive Ensemble for Spatiotemporal Gaussian Process
+Bayesian Nonparametric Integration of Infinite Spatiotemporal Ensemble
