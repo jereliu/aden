@@ -63,7 +63,7 @@ N, P = X_tr.shape
 
 #######################
 # 2.0. estimate parameters for GP posterior predictive
-ls = 1
+ls = 2
 
 K_pred = pm.gp.cov.ExpQuad(input_dim=P, ls=ls).full(X_pred, X_tr).eval()
 K_train = pm.gp.cov.ExpQuad(input_dim=P, ls=ls).full(X_tr, X_tr).eval()
@@ -103,7 +103,7 @@ for k_id in range(len(model_name)):
     ax = fig.gca(projection='3d')
     surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                            linewidth=0.1, antialiased=True)
-    ax.set_zlim(0, 0.5)
+    ax.set_zlim(0, 0.2)
     plt.title("%d. %s, mean weight=%.4f" %
               (k_id + 1, kern_name, np.mean(Z)))
     plt.savefig("./data/plot/weight/%d_weight_%s.png" % (k_id + 1, kern_name))
@@ -128,12 +128,3 @@ plt.savefig("./data/plot/weight/posterior_var.png")
 plt.close()
 
 plt.ion()
-
-#######################
-# 2.3 estimate cross validation error
-# TODO:
-# Two types: in-sample cross-validation
-
-
-# Oracle prediction error
-
