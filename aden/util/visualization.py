@@ -18,7 +18,8 @@ trace = pk.load(open("./data/ensemble_logistic.pkl", "rb"))
 # trace = pk.load(open("./data/ensemble_dirichlet.pkl", "rb"))
 
 
-model_name = ["Linear", "Poly2", "Poly3", "Poly4",
+model_name = ["Intercept",
+              "Linear", "Poly2", "Poly3", "Poly4",
               "RBF_ARD", "Matern_12_ARD", "Matern_32_ARD", "Matern_52_ARD",
               "MLP_ARD", "SpecMix"]
 
@@ -28,7 +29,7 @@ model_name = ["Linear", "Poly2", "Poly3", "Poly4",
 #######################
 
 # violin plot
-w_sample = trace["w"][8000:]
+w_sample = trace["w"][3000:]
 
 n_sample, N, K = w_sample.shape
 data = w_sample.reshape([n_sample * N, K]).swapaxes(0, 1).flatten()

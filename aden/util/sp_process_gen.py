@@ -28,7 +28,7 @@ noise = 0.01
 
 
 # random sample response
-def generate_pol(x, y, noise=0.1):
+def generate_data(x, y, noise=0.1):
     y_true = 0.2 * x + 0.5 * y + np.sqrt(x**2 + y**2 + 5* np.cos(x*y)) + \
              np.sin(x) + np.cos(y) + np.logaddexp(x*y, x)
     y_true = np.atleast_2d(y_true).T
@@ -40,13 +40,14 @@ def generate_pol(x, y, noise=0.1):
 if __name__ == "__main__":
     fit_residual = False
 
-    y_obs, y_true = generate_pol(x=loc_site[:, 0],
-                                 y=loc_site[:, 1],
-                                 noise=noise)
+    y_obs, y_true = generate_data(x=loc_site[:, 0],
+                                  y=loc_site[:, 1],
+                                  noise=noise)
 
 
     # generate base prediction
-    kerns = [gp.kern.Linear(n_dim), # + gp.kern.White(n_dim),
+    kerns = [gp.kern.Bias(n_dim), # + gp.kern.White(n_dim),
+             gp.kern.Linear(n_dim), # + gp.kern.White(n_dim),
              gp.kern.Poly(n_dim, order=2), # + gp.kern.White(n_dim),
              gp.kern.Poly(n_dim, order=3), # + gp.kern.White(n_dim),
              gp.kern.Poly(n_dim, order=4), # + gp.kern.White(n_dim),
@@ -70,7 +71,8 @@ if __name__ == "__main__":
     model_dict = dict()
 
     for k_id in range(len(kerns)):
-        kern_name = ["Linear", "Poly2", "Poly3", "Poly4", "RBF_ARD",
+        kern_name = ["Intercept",
+                     "Linear", "Poly2", "Poly3", "Poly4", "RBF_ARD",
                      "Matern_12_ARD", "Matern_32_ARD", "Matern_52_ARD",
                      "MLP_ARD", "SpecMix"][k_id]
 
@@ -196,7 +198,7 @@ if __name__ == "__main__":
     Y = np.linspace(np.min(loc_site[:, 1]), np.max(loc_site[:, 1]), 100)
     X, Y = np.meshgrid(X, Y)
     loc_grid = np.vstack((X.flatten(), Y.flatten())).T
-    y_true, _ = generate_pol(x=loc_grid[:, 0], y=loc_grid[:, 1])
+    y_true, _ = generate_data(x=loc_grid[:, 0], y=loc_grid[:, 1])
 
     for k_id in range(len(kerns)):
         plt.ioff()

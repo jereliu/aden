@@ -8,8 +8,8 @@ import theano.tensor as tt
 
 
 class aden(object):
-    def __init__(self, model, parametrization="logistic"):
-        self.model = model
+    def __init__(self, model_dict, parametrization="logistic"):
+        self.model = model_dict
 
         with pm.Model() as ensemble_model:
             # define model-specific gp
@@ -37,6 +37,5 @@ class aden(object):
             sigma = 1
             mu = pm.Deterministic("pred", (w * pred_tt).sum(axis=1))
             pm.Normal("obs", mu=mu, sd=sigma, observed=y_tt.T)
-
 
         self.model = ensemble_model
