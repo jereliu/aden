@@ -1,8 +1,9 @@
-__author__ = "jeremiah"
+__author__ = ["jeremiah"]
 
 import os
 os.environ['MKL_THREADING_LAYER'] = 'GNU'
 
+import pandas as pd
 import pickle as pk
 import random
 
@@ -12,26 +13,33 @@ import seaborn as sns
 import GPy as gp
 from aden.kernel.spectral_mixture import SpectralMixture
 
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
-
-# random sample location
-
-n_site = 500
-n_dim = 2
-np.random.seed(100)
-loc_site = np.random.normal(size=(n_site, n_dim))
+type = ["toy", "simu"][1]
 noise = 0.01
+
+if type == "toy":
+    # random sample location
+    n_site = 500
+    n_dim = 2
+    np.random.seed(100)
+    loc_site = np.random.normal(size=(n_site, n_dim))
+elif type == "simu":
+    data = pd.read_csv("./data/simu/Itai_2011_subsample.csv")
+    n_site = len(data)
+    n_dim = 2
+    loc_site = np.array(data[["lon", "lat"]].values.tolist())
 
 
 # random sample response
-def generate_data(x, y, noise=0.1):
-    y_true = 0.2 * x + 0.5 * y + np.sqrt(x**2 + y**2 + 5* np.cos(x*y)) + \
-             np.sin(x) + np.cos(y) + np.logaddexp(x*y, x)
-    y_true = np.atleast_2d(y_true).T
+def generate_data(x, y, noise=0.1, type="simu"):
+    if type == "toy":
+        y_true = 0.2 * x + 0.5 * y + np.sqrt(x**2 + y**2 + 5* np.cos(x*y)) + \
+                 np.sin(x) + np.cos(y) + np.logaddexp(x*y, x)
+        y_true = np.atleast_2d(y_true).T
+    elif type == "simu":
+        print("reading data and standardize to range [0, 1]..")
+        data = pd.read_csv("./data/simu/Itai_2011_subsample.csv")
+        y_true = np.atleast_2d(data["pm25"].tolist()).T
+        y_true = (y_true - np.min(y_true))/(np.max(y_true) - np.min(y_true))
 
     y_obs = y_true + np.random.normal(scale=noise, size=y_true.shape)
     return y_obs, y_true
@@ -42,15 +50,16 @@ if __name__ == "__main__":
 
     y_obs, y_true = generate_data(x=loc_site[:, 0],
                                   y=loc_site[:, 1],
-                                  noise=noise)
+                                  noise=noise,
+                                  type=type)
 
 
     # generate base prediction
     kerns = [gp.kern.Bias(n_dim), # + gp.kern.White(n_dim),
              gp.kern.Linear(n_dim), # + gp.kern.White(n_dim),
-             gp.kern.Poly(n_dim, order=2), # + gp.kern.White(n_dim),
-             gp.kern.Poly(n_dim, order=3), # + gp.kern.White(n_dim),
-             gp.kern.Poly(n_dim, order=4), # + gp.kern.White(n_dim),
+             #gp.kern.Poly(n_dim, order=2), # + gp.kern.White(n_dim),
+             #gp.kern.Poly(n_dim, order=3), # + gp.kern.White(n_dim),
+             #gp.kern.Poly(n_dim, order=4), # + gp.kern.White(n_dim),
              gp.kern.RBF(n_dim, ARD=True), # + gp.kern.White(n_dim),
              gp.kern.OU(n_dim, ARD=True),  # + gp.kern.White(n_dim),
              gp.kern.Matern32(n_dim, ARD=True),  # + gp.kern.White(n_dim),
@@ -59,8 +68,10 @@ if __name__ == "__main__":
              SpectralMixture(n_dim)]# + gp.kern.White(n_dim)]
 
     # create simple GP model
-    tr_id = range(n_site/2)
-    cv_id = range(n_site/2, n_site)
+    full_id = range(len(data))
+    tr_id = np.random.choice(full_id, 5000, replace=False)
+    cv_id = list(set(full_id) - set(tr_id))
+    # cv_id = np.random.choice(cv_id, 5000, replace=False)
 
     loc_tr, loc_cv = loc_site[tr_id], loc_site[cv_id]
     y_tr, y_cv = y_obs[tr_id], y_obs[cv_id]
@@ -72,13 +83,21 @@ if __name__ == "__main__":
 
     for k_id in range(len(kerns)):
         kern_name = ["Intercept",
-                     "Linear", "Poly2", "Poly3", "Poly4", "RBF_ARD",
+                     "Linear",
+                     #"Poly2", "Poly3", "Poly4",
+                     "RBF_ARD",
                      "Matern_12_ARD", "Matern_32_ARD", "Matern_52_ARD",
                      "MLP_ARD", "SpecMix"][k_id]
 
         kernel = kerns[k_id]
-        m = gp.models.GPRegression(X=loc_tr, Y=y_tr, kernel=kernel)
-        m.optimize(messages=False, max_f_eval=1000)
+
+        print("\n==========================")
+        print("Building model '%s'" % kern_name)
+        m = gp.models.SparseGPRegression(
+            X=loc_tr, Y=y_tr, kernel=kernel, num_inducing=500)
+        print("Optimizing..")
+        m.optimize(messages=True, max_f_eval=1000)
+        print("Predicting..")
         pred_tr[:, k_id] = m.predict(Xnew=loc_tr)[0].T
         pred_cv[:, k_id] = m.predict(Xnew=loc_cv)[0].T
 
@@ -87,15 +106,15 @@ if __name__ == "__main__":
         print("%s: CV Error %.4f" %
               (kern_name, np.mean((y_cv - pred_cv[:, k_id])**2)))
 
-    np.save("./data/y_tr.npy", y_tr)
-    np.save("./data/y_cv.npy", y_cv)
+    np.save("./data/%s/y_tr.npy" % type, y_tr)
+    np.save("./data/%s/y_cv.npy" % type, y_cv)
 
-    np.save("./data/pred_tr.npy", pred_tr)
-    np.save("./data/pred_cv.npy", pred_cv)
+    np.save("./data/%s/pred_tr.npy" % type, pred_tr)
+    np.save("./data/%s/pred_cv.npy" % type, pred_cv)
 
-    np.save("./data/X_tr.npy", loc_tr)
-    np.save("./data/X_cv.npy", loc_cv)
-    pk.dump(model_dict, open("./data/model.pkl", "wb"))
+    np.save("./data/%s/X_tr.npy" % type, loc_tr)
+    np.save("./data/%s/X_cv.npy" % type, loc_cv)
+    pk.dump(model_dict, open("./data/%s/model.pkl" % type, "wb"))
 
     # # plotting
     # plt.ioff()
@@ -143,7 +162,8 @@ if __name__ == "__main__":
         kernel_eps = gp.kern.RBF(n_dim, ARD=True) + gp.kern.White(n_dim)
 
         for k_id in range(len(kerns)):
-            kern_name = ["Linear", "Poly2", "Poly3", "Poly4",
+            kern_name = ["Linear",
+                         #"Poly2", "Poly3", "Poly4",
                          "RBF_ARD", "Matern_12_ARD", "Matern_32_ARD", "Matern_52_ARD",
                          "MLP_ARD", "SpecMix"][k_id]
 
