@@ -4,8 +4,6 @@ import os
 import datetime
 os.environ['MKL_THREADING_LAYER'] = 'GNU'
 
-import scipy.linalg as linalg
-
 import theano
 import theano.tensor as tt
 import numpy as np
@@ -13,9 +11,9 @@ import numpy as np
 import pickle as pk
 
 from aden.util.sp_process_gen import generate_data
+from aden.model import ensemble_model
 
 run_nuts = False
-
 
 linear_spec = True
 sparse_weight = True
@@ -24,6 +22,7 @@ link_func = ["dirichlet", "logistic", "relu"][1]
 ################################
 # 0. read in base model predictions
 ################################
+
 y = np.load("./data/y_tr.npy")
 X = np.load("./data/X_tr.npy")
 
@@ -74,79 +73,9 @@ X_tt = theano.shared(X_train)
 ls_tt = theano.shared(ls)
 temp_tt = theano.shared(temp)
 
-def ensemble_model(y_tt, pred_tt, X_tt, ls_tt, temp_tt,
-                   link_func="logistic", sparse_weight=True,
-                   linear_spec=False, eps=1e-12):
-
-    if linear_spec:
-        K_train = pm.gp.cov.ExpQuad(input_dim=P, ls=ls).full(X_train, X_train).eval()
-        U_train, s, _ = linalg.svd(K_train)
-        idx_train = np.where(s > eps)[0]
-        U_train = np.dot(U_train[:, idx_train], np.diag(np.sqrt(s[idx_train])))
-        Np = len(idx_train)
-
-    with pm.Model() as final_model:
-        # define model-specific gp
-        # ls = pm.InverseGamma('ls', alpha=2, beta=1)
-        # change ls to ls_tt, or vice versa
-
-        if linear_spec:
-            beta = []
-            f = []
-            for k in range(K):
-                # change X to X_tt, or vice versa
-                beta.append(
-                    pm.Normal("b_"+model_name[k], mu=0, sd=1, shape=Np)
-                )
-                f.append(
-                    pm.Deterministic(
-                        "f_"+model_name[k], tt.dot(U_train, beta[k])))
-            beta = tt.stack(beta)
-            f = tt.stack(f)
-
-        else:
-            cov_func = pm.gp.cov.ExpQuad(input_dim=P, ls=ls_tt)
-            gp = pm.gp.Latent(cov_func=cov_func)
-            f = []
-            for k in range(K):
-                # change X to X_tt, or vice versa
-                f.append(gp.prior("f_"+model_name[k], X=X_tt, shape=N))
-            f = tt.stack(f)
-
-        # transform into Dirichlet ensemble
-        if link_func == "logistic":
-            if sparse_weight:
-                temp = pm.InverseGamma('T', alpha=1+1/temp_tt, beta=1)
-            else:
-                temp = temp_tt
-            a = f.T * temp
-            w = pm.Deterministic("w", tt.nnet.softmax(a))
-        elif link_func == "relu":
-            # relu construction
-            a = tt.nnet.relu(f.T)
-            a = a / a.norm(1, axis=1).reshape((a.shape[0], 1))
-            w = pm.Deterministic("w", a)
-        elif link_func == "dirichlet":
-            # gamma construction
-            a_0 = pm.Gamma(name="a_0", alpha=pm.math.exp(f.T),
-                           beta=1, shape=(N, K))
-            a = a_0 / a_0.norm(1, axis=1).reshape((a_0.shape[0], 1))
-            w = pm.Deterministic("w", a)
-        else:
-            raise ValueError("link function %s not supported" %
-                             link_func)
-
-        # connect with outcome
-        # sigma = pm.InverseGamma(alpha=1, beta=1)
-        sigma = 1
-        mu = pm.Deterministic("pred", (w*pred_tt).sum(axis=1))
-        pm.Normal("obs", mu=mu, sd=sigma, observed=y_tt.T)
-
-    return final_model
-
-
 model_spec = \
     ensemble_model(y_tt, pred_tt, X_tt=X_tt, ls_tt=ls_tt, temp_tt=0.5,
+                   K=K, N=N, P=P, model_name=model_name,
                    link_func="logistic", sparse_weight=True,
                    linear_spec=False, eps=1e-12)
 
