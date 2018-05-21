@@ -1,4 +1,4 @@
-__author__ = "jeremiah"
+__author__ = ["jeremiah"]
 
 import os
 os.environ['MKL_THREADING_LAYER'] = 'GNU'
@@ -8,6 +8,7 @@ import scipy.linalg as linalg
 
 import pymc3 as pm
 import theano.tensor as tt
+
 
 def ensemble_model(y_tt, pred_tt, X_tt, ls_tt, temp_tt,
                    K, N, P, model_name=None,
@@ -70,7 +71,7 @@ def ensemble_model(y_tt, pred_tt, X_tt, ls_tt, temp_tt,
         # transform into Dirichlet ensemble
         if link_func == "logistic":
             if sparse_weight:
-                temp = pm.Gamma('T', mu=temp_tt, sd=100)
+                temp = pm.Gamma('T', mu=temp_tt, sd=10)
             else:
                 temp = temp_tt
             a = f.T * temp
