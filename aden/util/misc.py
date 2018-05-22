@@ -45,11 +45,13 @@ def spatial_weight_gen(X, K, ls=1., n_induce=[50, 50], visual=False):
     # sample from inducing GP
     K_induce = rbf_kernel(X=X_induce, gamma=1/float(ls))
     alpha_induce = np.random.normal(size=(N_induce, K))
+    print("standardizing f_induce by kernel row sum..")
     f_induce = K_induce.dot(alpha_induce)/np.sum(K_induce, axis=1)[:, None]
 
     # interpolate to full dataset
     K_interpol = rbf_kernel(X=X, Y=X_induce, gamma=1/float(ls))
-    f_interpol = K_interpol.dot(f_induce)/np.sum(K_interpol, axis=1)[:, None]
+    print("standardizing f_interpol by sqrt of kernel row sum..")
+    f_interpol = K_interpol.dot(f_induce)/np.sqrt(np.sum(K_interpol, axis=1))[:, None]
 
     # produce weight, then return
     w_loc = np.exp(f_interpol)/np.sum(np.exp(f_interpol), axis=1)[:, None]
@@ -61,7 +63,7 @@ def spatial_weight_gen(X, K, ls=1., n_induce=[50, 50], visual=False):
             np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), num=100))
         loc_plot = np.c_[np.ravel(loc_x), np.ravel(loc_y)]
         K_plot = rbf_kernel(X=loc_plot, Y=X_induce, gamma=1 / float(ls))
-        f_plot = K_plot.dot(f_induce) / float(N)
+        f_plot = K_plot.dot(f_induce)/np.sqrt(np.sum(K_plot, axis=1))[:, None]
         w_plot = np.exp(f_plot) / np.sum(np.exp(f_plot), axis=1)[:, None]
         loc_z = w_plot[:, 0].reshape(loc_x.shape)
 
@@ -69,7 +71,7 @@ def spatial_weight_gen(X, K, ls=1., n_induce=[50, 50], visual=False):
         ax = fig.gca(projection='3d')
         surf = ax.plot_surface(loc_x, loc_y, loc_z, cmap=cm.coolwarm,
                                linewidth=0.1, antialiased=True)
-        ax.set_zlim(np.min(loc_z), np.min(loc_z)+0.01)
+        ax.set_zlim(np.min(loc_z), np.min(loc_z)+0.3)
 
     return w_loc
 

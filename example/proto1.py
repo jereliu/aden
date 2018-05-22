@@ -142,14 +142,14 @@ kf = KFold(n_splits=n_fold, random_state=100, shuffle=True)
 P = X_model.shape[1]
 K = len(model_name)
 
+ls_list = [1, 5, 10, 50]
 N_list = [5, 15, 25, 50, 75, 100, 150, 200]
 sigma_list = [0.1, 0.25, 0.5, 0.75, 1, 1.25]
 
-ls_k = 1000
 alpha_w = 1
 
 # model parameter
-ls_model = 100.
+ls_model = None
 temp_prior = 100.
 
 # model container
@@ -159,182 +159,188 @@ pred_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 oracle_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 weight_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 
-for N_id in range(len(N_list)):
-    N = N_list[N_id]
+for ls_id in range(len(ls_list))[:1]:
+    ls_k = ls_list[ls_id]
+    print("fixing ls_model to true value....")
+    ls_model = ls_k
 
-    # define model
-    X_obs, y_obs, pred_obs, w_obs, X_all, y_all, pred_all, w_all = \
-        simu_proto1(X_model, pred=y_model,
-                    n_site=int(N / (1 - 1. / n_fold)), sigma_e=1,
-                    ls_k=ls_k, alpha=alpha_w,
-                    add_intercept=False)
+    for N_id in range(len(N_list))[:1]:
+        N = N_list[N_id]
 
-    y_tr, pred_tr, X_tr = y_obs[:N], pred_obs[:N], X_obs[:N]
+        # define model
+        X_obs, y_obs, pred_obs, w_obs, X_all, y_all, pred_all, w_all = \
+            simu_proto1(X_model, pred=y_model,
+                        n_site=int(N / (1 - 1. / n_fold)), sigma_e=1,
+                        ls_k=ls_k, alpha=alpha_w,
+                        add_intercept=False)
 
-    y_tt = theano.shared(y_tr)
-    pred_tt = theano.shared(pred_tr)
-    X_tt = theano.shared(X_tr)
-    ls_tt = theano.shared(ls_model)
-    temp_tt = theano.shared(temp_prior)
+        y_tr, pred_tr, X_tr = y_obs[:N], pred_obs[:N], X_obs[:N]
 
-    model_spec = \
-        ensemble_model(y_tt, pred_tt, X_tt=X_tt, ls_tt=ls_tt, temp_tt=temp_tt,
-                       K=K, N=N, P=P, model_name=model_name,
-                       link_func="logistic", sparse_weight=True,
-                       linear_spec=False, eps=1e-12)
+        y_tt = theano.shared(y_tr)
+        pred_tt = theano.shared(pred_tr)
+        X_tt = theano.shared(X_tr)
+        ls_tt = theano.shared(ls_model)
+        temp_tt = theano.shared(temp_prior)
 
-    for sigma_id in range(len(sigma_list)):
-        ################################
-        # 1. define model and parameters
-        ################################
-        # define parameters
-        sigma_e = sigma_list[sigma_id] * np.std(y_all)
+        model_spec = \
+            ensemble_model(y_tt, pred_tt, X_tt=X_tt, ls_tt=ls_tt, temp_tt=temp_tt,
+                           K=K, N=N, P=P, model_name=model_name,
+                           link_func="logistic", sparse_weight=True,
+                           linear_spec=False, eps=1e-12)
 
-        ################################
-        # 3. repeated cv evaluation
-        ################################
-        train_error_rep = []
-        pred_error_rep = []
-        oracle_error_rep = []
-        weight_error_rep = []
+        for sigma_id in range(len(sigma_list))[:1]:
+            ################################
+            # 1. define model and parameters
+            ################################
+            # define parameters
+            sigma_e = sigma_list[sigma_id] * np.std(y_all)
 
-        for rep_id in range(n_rep):
-            train_error_ls = []
-            pred_error_ls = []
-            oracle_error_ls = []
-            weight_error_ls = []
+            ################################
+            # 3. repeated cv evaluation
+            ################################
+            train_error_rep = []
+            pred_error_rep = []
+            oracle_error_rep = []
+            weight_error_rep = []
 
-            # generate data
-            X_obs, y_obs, pred_obs, w_obs, X_all, y_all, pred_all, w_all = \
-                simu_proto1(X_model, pred=y_model,
-                            n_site=int(N / (1 - 1. / n_fold)),
-                            sigma_e=sigma_e,
-                            ls_k=ls_k, alpha=alpha_w,
-                            add_intercept=False)
+            for rep_id in range(n_rep)[:1]:
+                train_error_ls = []
+                pred_error_ls = []
+                oracle_error_ls = []
+                weight_error_ls = []
 
-            for train_index, test_index in kf.split(X_obs):
-                # prepare train/test batch
-                pred_train, y_train, X_train = \
-                    pred_obs[train_index], y_obs[train_index], X_obs[train_index]
-                pred_test, y_test, X_test = \
-                    pred_obs[test_index], y_obs[test_index], X_obs[test_index]
-                pred_cv, y_cv, X_cv = \
-                    pred_all[cv_id], y_all[cv_id], X_all[cv_id]
-                w_obs_tr, w_obs_tst = w_obs[train_index], w_obs[test_index]
+                # generate data
+                X_obs, y_obs, pred_obs, w_obs, \
+                X_all, y_all, pred_all, w_all = \
+                    simu_proto1(X_model, pred=y_model,
+                                n_site=int(N / (1 - 1. / n_fold)),
+                                sigma_e=sigma_e,
+                                ls_k=ls_k, alpha=alpha_w,
+                                add_intercept=False)
 
-                pred_tt.set_value(pred_train)
-                y_tt.set_value(y_train)
-                X_tt.set_value(X_train)
+                for train_index, test_index in kf.split(X_obs):
+                    # prepare train/test batch
+                    pred_train, y_train, X_train = \
+                        pred_obs[train_index], y_obs[train_index], X_obs[train_index]
+                    pred_test, y_test, X_test = \
+                        pred_obs[test_index], y_obs[test_index], X_obs[test_index]
+                    pred_cv, y_cv, X_cv = \
+                        pred_all[cv_id], y_all[cv_id], X_all[cv_id]
+                    w_obs_tr, w_obs_tst = w_obs[train_index], w_obs[test_index]
 
-                # fit model
-                # with model_spec:
-                #     model_fit = pm.fit(n=100000, method=pm.ADVI())
-                #     trace = model_fit.sample(1000)
-                model_fit = pm.find_MAP(model=model_spec)
+                    pred_tt.set_value(pred_train)
+                    y_tt.set_value(y_train)
+                    X_tt.set_value(X_train)
 
-                # do prediction
-                w_tr = model_fit["w"] # np.mean(trace["w"], axis=0)
-                w_cv = ensemble_pred(X_test, X_train, model_est=model_fit, P=P, ls=ls_model)
-                w_or = ensemble_pred(X_cv, X_train, model_est=model_fit, P=P, ls=ls_model)
+                    # fit model
+                    # with model_spec:
+                    #     model_fit = pm.fit(n=100000, method=pm.ADVI())
+                    #     trace = model_fit.sample(1000)
+                    model_fit = pm.find_MAP(model=model_spec)
 
-                # training error
-                y_pred_tr = np.sum(pred_train * w_tr, axis=1)[:, None]
-                # cv error
-                y_pred_cv = np.sum(pred_test * w_cv, axis=1)[:, None]
-                # oracle error
-                y_pred_or = np.sum(pred_cv * w_or, axis=1)[:, None]
-                # weight error (cosine loss)
-                w_pred_tr = np.mean(array_cosine(w_tr, w_obs_tr))
+                    # do prediction
+                    w_tr = model_fit["w"] # np.mean(trace["w"], axis=0)
+                    w_cv = ensemble_pred(X_test, X_train, model_est=model_fit, P=P, ls=ls_model)
+                    w_or = ensemble_pred(X_cv, X_train, model_est=model_fit, P=P, ls=ls_model)
 
-                # model residual process
-                if model_residual:
-                    resid_model = XGBRegressor()
-                    resid_tr = y_train - y_pred_tr
-                    resid_model.fit(X_train, resid_tr)
+                    # training error
+                    y_pred_tr = np.sum(pred_train * w_tr, axis=1)[:, None]
+                    # cv error
+                    y_pred_cv = np.sum(pred_test * w_cv, axis=1)[:, None]
+                    # oracle error
+                    y_pred_or = np.sum(pred_cv * w_or, axis=1)[:, None]
+                    # weight error (cosine loss)
+                    w_pred_tr = np.mean(array_cosine(w_tr, w_obs_tr))
 
-                    resid_tr = resid_model.predict(X_train)
-                    resid_cv = resid_model.predict(X_test)
-                    resid_or = resid_model.predict(X_cv)
+                    # model residual process
+                    if model_residual:
+                        resid_model = XGBRegressor()
+                        resid_tr = y_train - y_pred_tr
+                        resid_model.fit(X_train, resid_tr)
 
-                    y_pred_tr += resid_tr[:, None]
-                    y_pred_cv += resid_cv[:, None]
-                    y_pred_or += resid_or[:, None]
+                        resid_tr = resid_model.predict(X_train)
+                        resid_cv = resid_model.predict(X_test)
+                        resid_or = resid_model.predict(X_cv)
 
-                # record train/test for this batch
-                train_error_ls.append(
-                    np.var(y_train - y_pred_tr)/np.var(y_train)
-                )
-                pred_error_ls.append(
-                    np.var(y_test - y_pred_cv)/np.var(y_test)
-                )
-                oracle_error_ls.append(
-                    np.var(y_cv - y_pred_or)/np.var(y_cv)
-                )
-                weight_error_ls.append(w_pred_tr)
+                        y_pred_tr += resid_tr[:, None]
+                        y_pred_cv += resid_cv[:, None]
+                        y_pred_or += resid_or[:, None]
 
-                print("train:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
-                      (train_error_ls[-1],
-                       np.var(y_train - pred_train[:, -3, None]) / np.var(y_train),
-                       np.var(y_train - pred_train[:, -2, None]) / np.var(y_train),
-                       np.var(y_train - pred_train[:, -1, None]) / np.var(y_train))
-                      )
-                print("test:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
-                      (pred_error_ls[-1],
-                       np.var(y_test - pred_test[:, -3, None]) / np.var(y_test),
-                       np.var(y_test - pred_test[:, -2, None]) / np.var(y_test),
-                       np.var(y_test - pred_test[:, -1, None]) / np.var(y_test))
-                      )
-                print("valid:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
-                      (oracle_error_ls[-1],
-                       np.var(y_cv - pred_cv[:, -3, None]) / np.var(y_cv),
-                       np.var(y_cv - pred_cv[:, -2, None]) / np.var(y_cv),
-                       np.var(y_cv - pred_cv[:, -1, None]) / np.var(y_cv))
-                      )
-                print("weight:\t %.4f: \t  (%.2f, %.2f, %.2f) vs (%.2f, %.2f, %.2f)" %
-                      ((weight_error_ls[-1], ) + \
-                      tuple(list(np.mean(w_tr, axis=0))) + \
-                      tuple(list(np.mean(w_obs_tr, axis=0))))
-                      )
+                    # record train/test for this batch
+                    train_error_ls.append(
+                        np.var(y_train - y_pred_tr)/np.var(y_train)
+                    )
+                    pred_error_ls.append(
+                        np.var(y_test - y_pred_cv)/np.var(y_test)
+                    )
+                    oracle_error_ls.append(
+                        np.var(y_cv - y_pred_or)/np.var(y_cv)
+                    )
+                    weight_error_ls.append(w_pred_tr)
 
-            train_error_rep.append(np.mean(np.array(train_error_ls)))
-            pred_error_rep.append(np.mean(np.array(pred_error_ls)))
-            oracle_error_rep.append(np.mean(np.array(oracle_error_ls)))
-            weight_error_rep.append(np.mean(np.array(weight_error_ls)))
+                    print("train:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
+                          (train_error_ls[-1],
+                           np.var(y_train - pred_train[:, -3, None]) / np.var(y_train),
+                           np.var(y_train - pred_train[:, -2, None]) / np.var(y_train),
+                           np.var(y_train - pred_train[:, -1, None]) / np.var(y_train))
+                          )
+                    print("test:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
+                          (pred_error_ls[-1],
+                           np.var(y_test - pred_test[:, -3, None]) / np.var(y_test),
+                           np.var(y_test - pred_test[:, -2, None]) / np.var(y_test),
+                           np.var(y_test - pred_test[:, -1, None]) / np.var(y_test))
+                          )
+                    print("valid:\t %.4f, \t vs.  %.4f, %.4f, %.4f" %
+                          (oracle_error_ls[-1],
+                           np.var(y_cv - pred_cv[:, -3, None]) / np.var(y_cv),
+                           np.var(y_cv - pred_cv[:, -2, None]) / np.var(y_cv),
+                           np.var(y_cv - pred_cv[:, -1, None]) / np.var(y_cv))
+                          )
+                    print("weight:\t %.4f: \t  (%.2f, %.2f, %.2f) vs (%.2f, %.2f, %.2f)" %
+                          ((weight_error_ls[-1], ) + \
+                          tuple(list(np.mean(w_tr, axis=0))) + \
+                          tuple(list(np.mean(w_obs_tr, axis=0))))
+                          )
 
-        train_error[N_id, sigma_id] = np.median(np.array(train_error_rep))
-        pred_error[N_id, sigma_id] = np.median(np.array(pred_error_rep))
-        oracle_error[N_id, sigma_id] = np.median(np.array(oracle_error_rep))
-        weight_error[N_id, sigma_id] = np.median(np.array(weight_error_rep))
+                train_error_rep.append(np.mean(np.array(train_error_ls)))
+                pred_error_rep.append(np.mean(np.array(pred_error_ls)))
+                oracle_error_rep.append(np.mean(np.array(oracle_error_ls)))
+                weight_error_rep.append(np.mean(np.array(weight_error_ls)))
 
-        print("\n\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        print(">>>>> result for N = %d, sigma=%.3f done\n\n\n" % (N, sigma_e))
-        print("train: %.4f, test %.4f, oracle %.4f, weight %.4f" %
-              (train_error[N_id, sigma_id],
-               pred_error[N_id, sigma_id],
-               oracle_error[N_id, sigma_id], weight_error[N_id, sigma_id]))
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n\n")
+            train_error[N_id, sigma_id] = np.median(np.array(train_error_rep))
+            pred_error[N_id, sigma_id] = np.median(np.array(pred_error_rep))
+            oracle_error[N_id, sigma_id] = np.median(np.array(oracle_error_rep))
+            weight_error[N_id, sigma_id] = np.median(np.array(weight_error_rep))
 
-np.save("./data/proto1_train_error_%s.npy" % plot_name, train_error)
-np.save("./data/proto1_pred_error_%s.npy" % plot_name, pred_error)
-np.save("./data/proto1_oracle_error_%s.npy" % plot_name, oracle_error)
-np.save("./data/proto1_weight_error_%s.npy" % plot_name, weight_error)
+            print("\n\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(">>>>> result for ls = %d, N = %d, sigma=%.3f done\n\n\n" % (ls_k, N, sigma_e))
+            print("train: %.4f, test %.4f, oracle %.4f, weight %.4f" %
+                  (train_error[N_id, sigma_id],
+                   pred_error[N_id, sigma_id],
+                   oracle_error[N_id, sigma_id], weight_error[N_id, sigma_id]))
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n\n")
 
-# save result
-train_error = np.load("./data/proto1_train_error_no_resid.npy")
-pred_error = np.load("./data/proto1_pred_error_no_resid.npy")
-oracle_error = np.load("./data/proto1_oracle_error_no_resid.npy")
-weight_error = np.load("./data/proto1_weight_error_no_resid.npy")
+    np.save("./data/proto1_train_r2_%s_ls%.1f.npy" % (plot_name, ls_k), train_error)
+    np.save("./data/proto1_pred_r2_%s_ls%.1f.npy" % (plot_name, ls_k), pred_error)
+    np.save("./data/proto1_oracle_r2_%s_ls%.1f.npy" % (plot_name, ls_k), oracle_error)
+    np.save("./data/proto1_weight_cos_%s_ls%.1f.npy" % (plot_name, ls_k), weight_error)
+
+    # save result
+    # train_error = np.load("./data/proto1_train_error_no_resid.npy")
+    # pred_error = np.load("./data/proto1_pred_error_no_resid.npy")
+    # oracle_error = np.load("./data/proto1_oracle_error_no_resid.npy")
+    # weight_error = np.load("./data/proto1_weight_error_no_resid.npy")
 
 
-np.savetxt("./data/proto1_train_error.txt",
-           add_dim_name(1-train_error, row_name=N_list, col_name=sigma_list),
-           delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-np.savetxt("./data/proto1_pred_error.txt",
-           add_dim_name(1-pred_error, row_name=N_list, col_name=sigma_list),
-           delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-np.savetxt("./data/proto1_oracle_error.txt",
-           add_dim_name(1-oracle_error, row_name=N_list, col_name=sigma_list),
-           delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-np.savetxt("./data/proto1_weight_error.txt",
-           add_dim_name(weight_error, row_name=N_list, col_name=sigma_list),
-           delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+    np.savetxt("./data/proto1_train_r2_ls%.1f.txt" % ls_k,
+               add_dim_name(1-train_error, row_name=N_list, col_name=sigma_list),
+               delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+    np.savetxt("./data/proto1_pred_r2_ls%.1f.txt" % ls_k,
+               add_dim_name(1-pred_error, row_name=N_list, col_name=sigma_list),
+               delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+    np.savetxt("./data/proto1_oracle_r2_ls%.1f.txt" % ls_k,
+               add_dim_name(1-oracle_error, row_name=N_list, col_name=sigma_list),
+               delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+    np.savetxt("./data/proto1_weight_cos_ls%.1f.txt" % ls_k,
+               add_dim_name(weight_error, row_name=N_list, col_name=sigma_list),
+               delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
