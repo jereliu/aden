@@ -38,11 +38,11 @@ link_func = ["logistic", "relu"][0]
 name_list = ["Itai", "QD", "Randall"]
 data_addr = "./data/proto1/"
 
-
 ################################
 # 0. read in base model predictions
 ################################
-# read in data
+
+# read in model data
 y_model = []
 for name in name_list:
     data_pd = pd.read_csv(data_addr + "%s_2011_align.csv" % name)
@@ -52,33 +52,38 @@ for name in name_list:
 X_model = np.array(X_model)
 y_model = np.array(y_model).T
 
-data_id = np.linspace(0, len(X_model)-1, num=10000, dtype=int)
+data_id = np.linspace(0, len(X_model)-1, num=10000, dtype=int) # 10000
 X_model = X_model[data_id]
 y_model = y_model[data_id]
 
 
 if plot_data:
-    y = y_model
+    y = y_model[:, 0]
+    X = X_model
 
     cm = plt.cm.get_cmap('jet')
     levels = np.percentile(y.flatten(), np.linspace(0, 100, 101))
     norm = colors.BoundaryNorm(levels, 256)
 
-    plt.scatter(X[:, 0], X[:, 1], c=y[:, 1],
+    plt.scatter(X[:, 0], X[:, 1], c=y,
                 alpha=0.7, s=0.3,
                 cmap=cm, norm=norm)
 
 
-def simu_proto1(X, pred, n_site=1000, sigma_e=0.1, ls_k=100., alpha=1.,
-                add_intercept=True):
+def simu_proto1(X, pred, n_site=1000,
+                sigma_e=0.1, ls_k=100., alpha=1.,
+                sample_monitor=False, add_intercept=True,
+                monitor_file="./data/proto1/site.csv"):
     N, K = pred.shape
 
     # 1. truncate and standardize input
     X_all = X.copy()
     pred_all = pred.copy()
 
-    X_all = (X_all - np.min(X_all, axis=0))/(np.max(X_all, axis=0) - np.min(X_all, axis=0))
-    pred_all = (pred_all - np.min(pred_all[:, 0]))/(np.max(pred_all[:, 0]) - np.min(pred_all[:, 0]))
+    X_all = (X_all - np.min(X_all, axis=0))/\
+            (np.max(X_all, axis=0) - np.min(X_all, axis=0))
+    pred_all = (pred_all - np.min(pred_all[:, 0]))/\
+               (np.max(pred_all[:, 0]) - np.min(pred_all[:, 0]))
     pred_all = np.clip(pred_all, a_min=0, a_max=1)
 
     # 2 generate weight
@@ -93,8 +98,26 @@ def simu_proto1(X, pred, n_site=1000, sigma_e=0.1, ls_k=100., alpha=1.,
     # 3. generate true surface
     y_true = np.sum(pred_all * w_all, axis=1)[:, None]
 
-    # 4. sample monitor, generate observation
-    site_id = np.random.choice(range(N), size=n_site, replace=False)
+    # 4. sample/read-in monitor location, generate observation
+    if sample_monitor:
+        site_id = np.random.choice(range(N), size=n_site, replace=False)
+    else:
+        # read-in from monitor_file,
+        site_loc = pd.read_csv(monitor_file).values
+        print("reading in %d monitor locations from %s" %
+              (len(site_loc), monitor_file))
+        if n_site > len(site_loc):
+            raise ValueError(
+                "n_site cannot be more than the number of "
+                "site locations specified in %s" % monitor_file)
+
+        # produce site_id through nearest matching, then sample
+        site_loc_id = np.array([
+            np.argmin(np.sum(np.abs(X_all - site[::-1]), axis=1))
+            for site in site_loc
+        ])
+        site_id = np.random.choice(site_loc_id, size=n_site, replace=False)
+
     w_obs = w_all[site_id]
     X_obs = X_all[site_id]
     y_obs = y_true[site_id] + sigma_e * np.random.normal(size=n_site)[:, None]
@@ -133,6 +156,11 @@ f_names = ["f_" + kern_name for kern_name in model_name]
 ####################################################
 # 1. define overall parameter and result container
 ####################################################
+# global parameter
+experiment_name = "proto1_monitor"
+sample_monitor = True
+monitor_file = "./data/proto1/site.csv"
+
 # cv parameter
 n_rep = 20
 n_fold = 2
@@ -142,33 +170,34 @@ kf = KFold(n_splits=n_fold, random_state=100, shuffle=True)
 P = X_model.shape[1]
 K = len(model_name)
 
-ls_list = [1, 5, 10, 50]
-N_list = [5, 15, 25, 50, 75, 100, 150, 200]
+ls_list = [0.5, 1, 5]
+# N_list = [5, 15, 25, 50, 75, 100, 150, 200]
+N_list = [5, 10, 15, 20, 25, 30, 35, 40, 45]
 sigma_list = [0.1, 0.25, 0.5, 0.75, 1, 1.25]
-
 alpha_w = 1
 
-# model parameter
+# define model parameter
 ls_model = None
 temp_prior = 100.
 
-# model container
+# initiate model container
 plot_name = "with_resid" if model_residual else "no_resid"
 train_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 pred_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 oracle_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 weight_error = np.zeros(shape=(len(N_list), len(sigma_list)))
 
-for ls_id in range(len(ls_list))[:1]:
+for ls_id in range(len(ls_list)):
     ls_k = ls_list[ls_id]
     print("fixing ls_model to true value....")
     ls_model = ls_k
 
-    for N_id in range(len(N_list))[:1]:
+    for N_id in range(len(N_list)):
         N = N_list[N_id]
 
         # define model
-        X_obs, y_obs, pred_obs, w_obs, X_all, y_all, pred_all, w_all = \
+        X_obs, y_obs, pred_obs, w_obs, \
+        X_all, y_all, pred_all, w_all = \
             simu_proto1(X_model, pred=y_model,
                         n_site=int(N / (1 - 1. / n_fold)), sigma_e=1,
                         ls_k=ls_k, alpha=alpha_w,
@@ -188,7 +217,7 @@ for ls_id in range(len(ls_list))[:1]:
                            link_func="logistic", sparse_weight=True,
                            linear_spec=False, eps=1e-12)
 
-        for sigma_id in range(len(sigma_list))[:1]:
+        for sigma_id in range(len(sigma_list)):
             ################################
             # 1. define model and parameters
             ################################
@@ -203,7 +232,7 @@ for ls_id in range(len(ls_list))[:1]:
             oracle_error_rep = []
             weight_error_rep = []
 
-            for rep_id in range(n_rep)[:1]:
+            for rep_id in range(n_rep):
                 train_error_ls = []
                 pred_error_ls = []
                 oracle_error_ls = []
@@ -216,7 +245,9 @@ for ls_id in range(len(ls_list))[:1]:
                                 n_site=int(N / (1 - 1. / n_fold)),
                                 sigma_e=sigma_e,
                                 ls_k=ls_k, alpha=alpha_w,
-                                add_intercept=False)
+                                add_intercept=False,
+                                sample_monitor=sample_monitor,
+                                monitor_file=monitor_file)
 
                 for train_index, test_index in kf.split(X_obs):
                     # prepare train/test batch
@@ -320,10 +351,27 @@ for ls_id in range(len(ls_list))[:1]:
                    oracle_error[N_id, sigma_id], weight_error[N_id, sigma_id]))
             print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n\n")
 
-    np.save("./data/proto1_train_r2_%s_ls%.1f.npy" % (plot_name, ls_k), train_error)
-    np.save("./data/proto1_pred_r2_%s_ls%.1f.npy" % (plot_name, ls_k), pred_error)
-    np.save("./data/proto1_oracle_r2_%s_ls%.1f.npy" % (plot_name, ls_k), oracle_error)
-    np.save("./data/proto1_weight_cos_%s_ls%.1f.npy" % (plot_name, ls_k), weight_error)
+        np.savetxt("./data/%s_train_r2_ls%.1f.txt" % (experiment_name, ls_k),
+                   add_dim_name(1 - train_error, row_name=N_list, col_name=sigma_list),
+                   delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+        np.savetxt("./data/%s_pred_r2_ls%.1f.txt" % (experiment_name, ls_k),
+                   add_dim_name(1 - pred_error, row_name=N_list, col_name=sigma_list),
+                   delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+        np.savetxt("./data/%s_oracle_r2_ls%.1f.txt" % (experiment_name, ls_k),
+                   add_dim_name(1 - oracle_error, row_name=N_list, col_name=sigma_list),
+                   delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+        np.savetxt("./data/%s_weight_cos_ls%.1f.txt" % (experiment_name, ls_k),
+                   add_dim_name(weight_error, row_name=N_list, col_name=sigma_list),
+                   delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
+
+    np.save("./data/%s_train_r2_%s_ls%.1f.npy" %
+            (experiment_name, plot_name, ls_k), train_error)
+    np.save("./data/%s_pred_r2_%s_ls%.1f.npy" %
+            (experiment_name, plot_name, ls_k), pred_error)
+    np.save("./data/%s_oracle_r2_%s_ls%.1f.npy" %
+            (experiment_name, plot_name, ls_k), oracle_error)
+    np.save("./data/%s_weight_cos_%s_ls%.1f.npy" %
+            (experiment_name, plot_name, ls_k), weight_error)
 
     # save result
     # train_error = np.load("./data/proto1_train_error_no_resid.npy")
@@ -332,15 +380,15 @@ for ls_id in range(len(ls_list))[:1]:
     # weight_error = np.load("./data/proto1_weight_error_no_resid.npy")
 
 
-    np.savetxt("./data/proto1_train_r2_ls%.1f.txt" % ls_k,
+    np.savetxt("./data/%s_train_r2_ls%.1f.txt" % (experiment_name, ls_k),
                add_dim_name(1-train_error, row_name=N_list, col_name=sigma_list),
                delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-    np.savetxt("./data/proto1_pred_r2_ls%.1f.txt" % ls_k,
+    np.savetxt("./data/%s_pred_r2_ls%.1f.txt" % (experiment_name, ls_k),
                add_dim_name(1-pred_error, row_name=N_list, col_name=sigma_list),
                delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-    np.savetxt("./data/proto1_oracle_r2_ls%.1f.txt" % ls_k,
+    np.savetxt("./data/%s_oracle_r2_ls%.1f.txt" % (experiment_name, ls_k),
                add_dim_name(1-oracle_error, row_name=N_list, col_name=sigma_list),
                delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
-    np.savetxt("./data/proto1_weight_cos_ls%.1f.txt" % ls_k,
+    np.savetxt("./data/%s_weight_cos_ls%.1f.txt" % (experiment_name, ls_k),
                add_dim_name(weight_error, row_name=N_list, col_name=sigma_list),
                delimiter=' & ', fmt='%.4f', newline=' \\\\\n')
